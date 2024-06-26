@@ -2,7 +2,7 @@ name: Go Build and Test
 
 on:
   push:
-    branches: 
+    branches:
       - main
       - development
 
@@ -17,14 +17,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.22.4'
+          go-version: "1.22.4"
 
       - name: Install golangci-lint
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.59.1
 
       - name: Run go fmt
-        run: go fmt ./...
+        run: |
+          go fmt ./...
+          git diff --exit-code || (echo "Formatting issues found. Please run 'go fmt'." && exit 1)
 
       - name: Run golangci-lint
         run: golangci-lint run
