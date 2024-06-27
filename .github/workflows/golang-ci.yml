@@ -31,8 +31,5 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run
 
-      - name: Build
-        run: go build -v ./...
-
       - name: Test
         run: go test -v ./...
