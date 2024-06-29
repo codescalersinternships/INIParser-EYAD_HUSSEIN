@@ -198,11 +198,8 @@ func (p *Parser) GetSections() (map[string]map[string]string, error) {
 	return p.parsedData, nil
 }
 
-// ToString returns a string representation of the parsed data.
-func (p *Parser) ToString() (string, error) {
-	if len(p.parsedData) == 0 {
-		return "", ErrParsedDataEmpty
-	}
+// String returns a string representation of the parsed data.
+func (p *Parser) String() string {
 
 	var str string
 	for section, properties := range p.parsedData {
@@ -212,7 +209,7 @@ func (p *Parser) ToString() (string, error) {
 		}
 	}
 
-	return str, nil
+	return str
 }
 
 // SaveToFile saves the parsed data to a file.

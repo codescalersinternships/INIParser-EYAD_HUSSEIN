@@ -139,31 +139,23 @@ func ExampleParser_GetSectionNames() {
 	fmt.Println(parser.GetSectionNames())
 }
 
-func TestParser_ToString(t *testing.T) {
+func TestParser_String(t *testing.T) {
 	parser := NewParser()
 
 	t.Run("return string with valid data", func(t *testing.T) {
 		parser.parsedData = validParsedContent
 
-		str, _ := parser.ToString()
+		str := parser.String()
 		_ = parser.LoadFromString(str)
 
 		assertTwoMaps(t, parser.parsedData, validParsedContent)
 	})
-
-	t.Run("return string with empty data", func(t *testing.T) {
-		parser.parsedData = make(map[string]map[string]string)
-
-		_, err := parser.ToString()
-
-		assertError(t, err, ErrParsedDataEmpty)
-	})
 }
 
-func ExampleParser_ToString() {
+func ExampleParser_String() {
 	parser := NewParser()
 	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
-	str, _ := parser.ToString()
+	str := parser.String()
 	fmt.Println(str)
 }
 
