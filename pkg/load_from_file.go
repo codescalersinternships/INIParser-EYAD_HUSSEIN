@@ -14,9 +14,7 @@ import (
 //
 // An unsuccessful load would return an error and leave p.parsedData as it is.
 func (p *IniParser) LoadFromFile(filePath string) error {
-	p.filePath = filePath
-
-	data, err := parseData(p.filePath)
+	data, err := parseFileData(filePath)
 
 	if err != nil {
 		return err
@@ -26,7 +24,7 @@ func (p *IniParser) LoadFromFile(filePath string) error {
 	return nil
 }
 
-func parseData(filePath string) (map[string]map[string]string, error) {
+func parseFileData(filePath string) (map[string]map[string]string, error) {
 
 	readFile, err := os.Open(filePath)
 
@@ -48,8 +46,7 @@ func parseData(filePath string) (map[string]map[string]string, error) {
 
 	re := regexp.MustCompile(`\[.*?\]`)
 
-	var i int
-	for i = 0; i < len(fileLines); i++ {
+	for i := 0; i < len(fileLines); i++ {
 
 		sectionName := re.FindString(fileLines[i])
 

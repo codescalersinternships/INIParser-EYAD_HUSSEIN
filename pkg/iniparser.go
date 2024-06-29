@@ -2,18 +2,26 @@
 // ini files and extract information from them.
 package iniparser
 
-import "errors"
+import (
+	"errors"
+)
 
 // A IniParser loads and manipulates ini files as requested.
 // The zero value for Parser is a parser ready to use.
 type IniParser struct {
-	filePath   string
 	parsedData map[string]map[string]string
 }
 
+// NewParser returns a new IniParser.
+func NewParser() *IniParser {
+	return &IniParser{}
+}
+
 var (
-	ErrOpeningFile           = errors.New("error opening the file")                   // failed to open file
-	ErrReadingFile           = errors.New("error reading the file")                   // failed during reading file
-	ErrDataNotMatching       = errors.New("retrieved data is not matching test data") // test data do not match retrieved data
-	ErrParsedDataNotMatching = errors.New("parsed data is not matching test data")    // test parsed config data do not match retrieved config data
+	ErrOpeningFile             = errors.New("error opening the file")                                 // failed to open file
+	ErrReadingFile             = errors.New("error reading the file")                                 // failed during reading file
+	ErrDataNotMatching         = errors.New("retrieved data is not matching test data")               // test data do not match retrieved data
+	ErrParsedDataNotMatching   = errors.New("parsed data is not matching test data")                  // test parsed config data do not match retrieved config data
+	ErrParsedStringNotMatching = errors.New("parsed string is not matching test string")              // test parsed config data do not match retrieved config data
+	ErrParsedDataMatching      = errors.New("expected error, but got parsed data matching test data") // test parsed config data matching retrieved config data when data is invalid
 )
