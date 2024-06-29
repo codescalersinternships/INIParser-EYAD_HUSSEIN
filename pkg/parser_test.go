@@ -160,6 +160,13 @@ func TestParser_ToString(t *testing.T) {
 	})
 }
 
+func ExampleParser_ToString() {
+	parser := NewParser()
+	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	str, _ := parser.ToString()
+	fmt.Println(str)
+}
+
 func TestParser_Get(t *testing.T) {
 	parser := NewParser()
 
