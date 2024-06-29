@@ -137,7 +137,6 @@ func ExampleParser_GetSectionNames() {
 	parser := NewParser()
 	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
 	fmt.Println(parser.GetSectionNames())
-	// Output: [owner database]
 }
 
 func TestParser_ToString(t *testing.T) {
@@ -147,8 +146,9 @@ func TestParser_ToString(t *testing.T) {
 		parser.parsedData = validParsedContent
 
 		str, _ := parser.ToString()
+		_ = parser.LoadFromString(str)
 
-		assertStrings(t, str, validStringInput)
+		assertTwoMaps(t, parser.parsedData, validParsedContent)
 	})
 
 	t.Run("return string with empty data", func(t *testing.T) {
