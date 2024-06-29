@@ -8,7 +8,7 @@ import (
 
 func main() {
 	parser := iniparser.NewParser()
-	err := parser.LoadFromFile("../pkg/test_file_1.ini")
+	err := parser.LoadFromFile("../pkg/test-files/test_file_1.ini")
 
 	if err != nil {
 		log.Fatal(err)

@@ -29,10 +29,13 @@ var (
 	ErrParsedStringNotMatching = errors.New("parsed string is not matching test string")              // test parsed config data do not match retrieved config data
 	ErrParsedDataMatching      = errors.New("expected error, but got parsed data matching test data") // test parsed config data matching retrieved config data when data is invalid
 
-	ErrKeyNotFound     = errors.New("key not found")     // key not found in the section
-	ErrSectionNotFound = errors.New("section not found") // section not found in the file
-	ErrSectionIsEmtpy  = errors.New("section is empty")  // section is empty
-	ErrKeyIsEmtpy      = errors.New("key is empty")      // key is empty
+	ErrKeyNotFound     = errors.New("key not found")             // input key not found in the section
+	ErrSectionNotFound = errors.New("section not found")         // input section not found in the file
+	ErrSectionIsEmtpy  = errors.New("section is empty")          // input section is empty
+	ErrKeyIsEmtpy      = errors.New("key is empty")              // input key is empty
+	ErrEmptyString     = errors.New("empty string")              // input is empty string
+	ErrParsedDataEmpty = errors.New("no parsed data to return")  // no parsed data to return
+	ErrWritingToFile   = errors.New("error writing to the file") // failed to write to file
 )
 
 // LoadFromFile opens designated file, read and parse its data
@@ -101,7 +104,10 @@ func parseFileData(filePath string) (map[string]map[string]string, error) {
 
 // LoadFromString takes in a string data, parses it
 // then store the parsed data in Parser parsedData field.
-func (p *Parser) LoadFromString(data string) {
+func (p *Parser) LoadFromString(data string) error {
+	if data == "" {
+		return ErrEmptyString
+	}
 
 	lines := strings.Split(data, "\n")
 
@@ -131,6 +137,8 @@ func (p *Parser) LoadFromString(data string) {
 	}
 
 	p.parsedData = parsedData
+
+	return nil
 }
 
 // Get retrieves the value of a key in a section.
@@ -166,6 +174,73 @@ func (p *Parser) Set(section_name, key, value string) error {
 	}
 
 	p.parsedData[section_name][key] = value
+
+	return nil
+}
+
+// GetSectionNames returns a slice of section names.
+func (p *Parser) GetSectionNames() []string {
+	sectionNames := make([]string, 0, len(p.parsedData))
+
+	for sectionName := range p.parsedData {
+		sectionNames = append(sectionNames, sectionName)
+	}
+
+	return sectionNames
+}
+
+// GetSections returns a map of sections and their keys and values.
+func (p *Parser) GetSections() (map[string]map[string]string, error) {
+
+	if len(p.parsedData) == 0 {
+		return nil, ErrParsedDataEmpty
+	}
+	return p.parsedData, nil
+}
+
+// ToString returns a string representation of the parsed data.
+func (p *Parser) ToString() (string, error) {
+	if len(p.parsedData) == 0 {
+		return "", ErrParsedDataEmpty
+	}
+
+	var str string
+	for section, properties := range p.parsedData {
+		str += "\n[" + section + "]\n"
+		for key, value := range properties {
+			str += key + "=" + value + "\n"
+		}
+	}
+
+	return str, nil
+}
+
+// SaveToFile saves the parsed data to a file.
+func (p *Parser) SaveToFile(filePath string) error {
+	if len(p.parsedData) == 0 {
+		return ErrParsedDataEmpty
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return ErrOpeningFile
+	}
+
+	defer file.Close()
+
+	for section, properties := range p.parsedData {
+		_, err := file.WriteString("\n[" + section + "]\n")
+		if err != nil {
+			return ErrWritingToFile
+		}
+		for key, value := range properties {
+			_, err := file.WriteString(key + "=" + value + "\n")
+
+			if err != nil {
+				return ErrWritingToFile
+			}
+		}
+	}
 
 	return nil
 }
