@@ -7,10 +7,12 @@ import (
 )
 
 func main() {
-	parser := iniparser.IniParser{}
-	err := parser.LoadFromFile("./data.ini")
+	parser := iniparser.NewParser()
+	err := parser.LoadFromFile("../pkg/test_file_1.ini")
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println(parser.Get("owner", "name"))
 }
