@@ -1,6 +1,7 @@
 package iniparser
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -12,76 +13,112 @@ var validParsedContent = map[string]map[string]string{
 	"database": {"server": "192.0.2.62", "port": "143", "file": "payroll.dat"},
 }
 
-const validStringInput = `
+const validInput = `
+;owner section
 [owner]
 name=John Doe
 organization=Acme Widgets Inc.
 
+;database section
 [database]
-#ignore=yes
 server=192.0.2.62
 port=143
 file=payroll.dat
 `
 
-const inValidStringInput = `
+const invalidEmptySectionNameInput = `
 [owner]
-name=Eyad
+name=John Doe
+organization=Acme Widgets Inc.
+
+[]
+server=192.0.2.62
+port=143
+file=payroll.dat
+`
+
+const invalidEmptyKeyNameInput = `
+[owner]
+name=John Doe
+=Acme Widgets Inc.
+
+[database]
+server=192.0.2.62
+port=143
+file=payroll.dat
+`
+
+const invalidEmptyValueInput = `
+[owner]
+name=John Doe
 organization=Acme Widgets Inc.
 
 [database]
-#ignore=yes
-url=192.0.2.62
+server=
 port=143
+file=payroll.dat
+`
+
+const inValidCommentOnNewLineInput = `
+[owner]
+name=John Doe
+organization=Acme Widgets Inc.
+
+[database]
+#server=192.0.2.62
+port=143
+file=payroll.dat
 `
 
 func TestParser_LoadFromFile(t *testing.T) {
-	t.Run("load from file with valid data", func(t *testing.T) {
-		filePath := "./test-files/test_file_1.ini"
+	parser := NewParser()
 
-		parser := NewParser()
+	t.Run("load from file with valid data", func(t *testing.T) {
+		filePath := "./testdata/valid_data.ini"
 
 		err := parser.LoadFromFile(filePath)
 
 		if err != nil {
-			switch err {
-			case ErrReadingFile:
-			case ErrOpeningFile:
-				t.Errorf("%q\n, file name given:\n%q", ErrReadingFile.Error(), filePath)
-			default:
-				t.Errorf(err.Error())
-			}
+			t.Errorf(err.Error())
 		}
 
 		assertTwoMaps(t, parser.parsedData, validParsedContent)
 	})
 
-	t.Run("load from file with invalid data", func(t *testing.T) {
-		filePath := "./test-files/test_file_2.ini"
+	var loadInvalidLoadTests = []struct {
+		testName string
+		filePath string
+		want     error
+	}{
+		{"load from file with empty section name", "./testdata/empty_section_name.ini", ErrSectionIsEmpty},
+		{"load from file with empty key name", "./testdata/empty_key_name.ini", ErrKeyIsEmpty},
+		{"load from file with empty value", "./testdata/empty_value.ini", ErrValueIsEmpty},
+		{"load from file with comment on new line", "./testdata/comment_on_new_line.ini", ErrCommentOnNewLine},
+	}
 
-		parser := NewParser()
+	for _, tt := range loadInvalidLoadTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			err := parser.LoadFromFile(tt.filePath)
 
-		err := parser.LoadFromFile(filePath)
-
-		if err != nil {
-			switch err {
-			case ErrReadingFile:
-			case ErrOpeningFile:
-				t.Errorf("%q\n, file name given:\n%q", ErrReadingFile.Error(), filePath)
-			default:
-				t.Errorf(err.Error())
+			if err == nil {
+				t.Error("Expected error, but got nil")
 			}
-		}
 
-		if reflect.DeepEqual(parser.parsedData, validParsedContent) {
-			t.Errorf(ErrParsedDataMatching.Error())
-		}
-	})
+			if err != nil {
+				switch err {
+				case ErrOpeningFile:
+					t.Error(err)
+				default:
+					assertError(t, err, tt.want)
+				}
+			}
+		})
+	}
 }
 
 func ExampleParser_LoadFromFile() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	val, _ := parser.Get("owner", "name")
 	fmt.Println(val)
 	// Output: John Doe
@@ -90,35 +127,35 @@ func ExampleParser_LoadFromFile() {
 func TestParser_LoadFromString(t *testing.T) {
 	parser := NewParser()
 
-	t.Run("load from string with empty string input", func(t *testing.T) {
-		err := parser.LoadFromString("")
+	var loadTests = []struct {
+		testName string
+		input    string
+		want     map[string]map[string]string
+		err      error
+	}{
+		{"load from string with valid data", validInput, validParsedContent, nil},
+		{"load from string with empty section name", invalidEmptySectionNameInput, nil, ErrSectionIsEmpty},
+		{"load from string with empty key name", invalidEmptyKeyNameInput, nil, ErrKeyIsEmpty},
+		{"load from string with empty value", invalidEmptyValueInput, nil, ErrValueIsEmpty},
+		{"load from string with comment on new line", inValidCommentOnNewLineInput, nil, ErrCommentOnNewLine},
+	}
 
-		if err == nil {
-			t.Error("Expected error, but got nil")
-		}
-		assertError(t, err, ErrEmptyString)
-	})
-	t.Run("load from string with valid string input", func(t *testing.T) {
+	for _, tt := range loadTests {
+		t.Run(tt.testName, func(t *testing.T) {
+			err := parser.LoadFromString(tt.input)
 
-		_ = parser.LoadFromString(validStringInput)
-
-		assertTwoMaps(t, parser.parsedData, validParsedContent)
-	})
-
-	t.Run("load from string with invalid string input", func(t *testing.T) {
-
-		_ = parser.LoadFromString(inValidStringInput)
-
-		if reflect.DeepEqual(parser.parsedData, validParsedContent) {
-			t.Errorf(ErrParsedDataMatching.Error())
-		}
-	})
+			if err == nil {
+				assertTwoMaps(t, parser.parsedData, tt.want)
+			}
+			assertError(t, err, tt.err)
+		})
+	}
 }
 
 func ExampleParser_LoadFromString() {
 	parser := NewParser()
 
-	_ = parser.LoadFromString(validStringInput)
+	_ = parser.LoadFromString(validInput)
 }
 
 func TestParser_GetSectionNames(t *testing.T) {
@@ -137,7 +174,7 @@ func TestParser_GetSectionNames(t *testing.T) {
 
 func ExampleParser_GetSectionNames() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	fmt.Println(parser.GetSectionNames())
 }
 
@@ -156,7 +193,7 @@ func TestParser_String(t *testing.T) {
 
 func ExampleParser_String() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	str := parser.String()
 	fmt.Println(str)
 }
@@ -195,7 +232,7 @@ func TestParser_Get(t *testing.T) {
 
 func ExampleParser_Get() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	val, _ := parser.Get("owner", "name")
 	fmt.Println(val)
 	// Output: John Doe
@@ -218,8 +255,8 @@ func TestParser_Set(t *testing.T) {
 		{"set value for existing section and key", "owner", "name", "Eyad", "Eyad", nil},
 		{"set value for existing section and non-existing key", "owner", "config", "data", "data", ErrKeyNotFound},
 		{"set value for non-existing section", "config", "database", "192.178.292.1", "192.178.292.1", ErrSectionNotFound},
-		{"set value on empty section", "", "", "", "", ErrSectionIsEmtpy},
-		{"set value on empty key", "owner", "", "", "", ErrKeyIsEmtpy},
+		{"set value on empty section", "", "", "", "", ErrSectionIsEmpty},
+		{"set value on empty key", "owner", "", "", "", ErrKeyIsEmpty},
 	}
 
 	for _, tt := range setTests {
@@ -236,7 +273,7 @@ func TestParser_Set(t *testing.T) {
 
 func ExampleParser_Set() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	_ = parser.Set("owner", "name", "Eyad")
 	val, _ := parser.Get("owner", "name")
 	fmt.Println(val)
@@ -265,7 +302,7 @@ func TestParser_GetSections(t *testing.T) {
 
 func ExampleParser_GetSections() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	sections, _ := parser.GetSections()
 
 	fmt.Println(sections)
@@ -273,7 +310,7 @@ func ExampleParser_GetSections() {
 
 func TestParser_SaveToFile(t *testing.T) {
 	parser := NewParser()
-	filePath := "./test-files/output.ini"
+	filePath := "./testdata/output.ini"
 
 	t.Run("save to file with valid data", func(t *testing.T) {
 		parser.parsedData = validParsedContent
@@ -281,25 +318,13 @@ func TestParser_SaveToFile(t *testing.T) {
 		err := parser.SaveToFile(filePath)
 
 		if err != nil {
-			switch err {
-			case ErrWritingToFile:
-			case ErrOpeningFile:
-				t.Errorf("%q\n, file name given:\n%q", ErrReadingFile.Error(), filePath)
-			default:
-				t.Errorf(err.Error())
-			}
+			t.Error(err)
 		}
 
 		err = parser.LoadFromFile(filePath)
 
 		if err != nil {
-			switch err {
-			case ErrReadingFile:
-			case ErrOpeningFile:
-				t.Errorf("%q\n, file name given:\n%q", ErrReadingFile.Error(), filePath)
-			default:
-				t.Errorf(err.Error())
-			}
+			t.Error(err)
 		}
 
 		assertTwoMaps(t, parser.parsedData, validParsedContent)
@@ -310,13 +335,7 @@ func TestParser_SaveToFile(t *testing.T) {
 		err := parser.SaveToFile(filePath)
 
 		if err != ErrParsedDataEmpty {
-			switch err {
-			case ErrWritingToFile:
-			case ErrOpeningFile:
-				t.Errorf("%q\n, file name given:\n%q", ErrReadingFile.Error(), filePath)
-			default:
-				t.Errorf(err.Error())
-			}
+			t.Error(err)
 		}
 
 		assertError(t, err, ErrParsedDataEmpty)
@@ -326,14 +345,14 @@ func TestParser_SaveToFile(t *testing.T) {
 
 func ExampleParser_SaveToFile() {
 	parser := NewParser()
-	_ = parser.LoadFromFile("./test-files/test_file_1.ini")
+	_ = parser.LoadFromFile("./testdata/valid_data.ini")
 	_ = parser.Set("owner", "name", "Eyad")
-	_ = parser.SaveToFile("./test-files/output.ini")
+	_ = parser.SaveToFile("./testdata/output.ini")
 }
 
 func assertError(t testing.TB, got, want error) {
 	t.Helper()
-	if got != want {
+	if !errors.Is(got, want) {
 		t.Errorf("got: %q, want: %q", got, want)
 	}
 }
@@ -341,7 +360,7 @@ func assertError(t testing.TB, got, want error) {
 func assertTwoMaps(t testing.TB, got, want map[string]map[string]string) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got:\n\t%q \nwant:\n\t%q", got, want)
+		t.Errorf("got error:\n\t%q \nwant:\n\t%q", got, want)
 	}
 }
 
