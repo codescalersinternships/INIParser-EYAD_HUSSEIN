@@ -18,6 +18,7 @@ name=John Doe
 organization=Acme Widgets Inc.
 
 [database]
+#ignore=yes
 server=192.0.2.62
 port=143
 file=payroll.dat
@@ -29,6 +30,7 @@ name=Eyad
 organization=Acme Widgets Inc.
 
 [database]
+#ignore=yes
 url=192.0.2.62
 port=143
 `

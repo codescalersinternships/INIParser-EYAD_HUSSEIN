@@ -70,7 +70,11 @@ func parseFileData(filePath string) (map[string]map[string]string, error) {
 	var fileLines []string
 
 	for fileScanner.Scan() {
-		fileLines = append(fileLines, fileScanner.Text())
+		line := fileScanner.Text()
+		if strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fileLines = append(fileLines, line)
 	}
 
 	parsedData := make(map[string]map[string]string)
@@ -120,7 +124,7 @@ func (p *Parser) LoadFromString(data string) error {
 
 		if sectionName != "" {
 			i++
-			for lines[i] == "" {
+			for strings.HasPrefix(lines[i], ";") || strings.HasPrefix(lines[i], "#") || lines[i] == "" {
 				i++
 			}
 
