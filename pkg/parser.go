@@ -3,7 +3,6 @@
 package iniparser
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -29,16 +28,15 @@ var (
 	ErrParsedStringNotMatching = errors.New("parsed string is not matching test string")              // test parsed config data do not match retrieved config data
 	ErrParsedDataMatching      = errors.New("expected error, but got parsed data matching test data") // test parsed config data matching retrieved config data when data is invalid
 
-	ErrInvalidSectionName = errors.New("invalid section name")      // input section name is invalid
-	ErrKeyNotFound        = errors.New("key not found")             // input key not found in the section
-	ErrSectionNotFound    = errors.New("section not found")         // input section not found in the file
-	ErrSectionIsEmpty     = errors.New("section given is empty")    // input section is empty
-	ErrKeyIsEmpty         = errors.New("key is empty")              // input key is empty
-	ErrValueIsEmpty       = errors.New("value is empty")            // input value is empty
-	ErrEmptyString        = errors.New("empty string")              // input is empty string
-	ErrParsedDataEmpty    = errors.New("no parsed data to return")  // no parsed data to return
-	ErrWritingToFile      = errors.New("error writing to the file") // failed to write to file
-	ErrCommentOnNewLine   = errors.New("comment on new line")       // comment on new line
+	ErrKeyNotFound      = errors.New("key not found")             // input key not found in the section
+	ErrSectionNotFound  = errors.New("section not found")         // input section not found in the file
+	ErrSectionIsEmpty   = errors.New("section given is empty")    // input section is empty
+	ErrKeyIsEmpty       = errors.New("key is empty")              // input key is empty
+	ErrValueIsEmpty     = errors.New("value is empty")            // input value is empty
+	ErrEmptyString      = errors.New("empty string")              // input is empty string
+	ErrParsedDataEmpty  = errors.New("no parsed data to return")  // no parsed data to return
+	ErrWritingToFile    = errors.New("error writing to the file") // failed to write to file
+	ErrCommentOnNewLine = errors.New("comment on new line")       // comment on new line
 )
 
 // LoadFromFile opens designated file, read and parse its data
@@ -48,41 +46,11 @@ var (
 //
 // An unsuccessful load would return an error and leave p.parsedData as it is.
 func (p *Parser) LoadFromFile(filePath string) error {
-	data, err := parseFileData(filePath)
-
+	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w given file path %q", ErrOpeningFile, filePath)
 	}
-
-	p.parsedData = data
-	return nil
-}
-
-func parseFileData(filePath string) (map[string]map[string]string, error) {
-
-	readFile, err := os.Open(filePath)
-
-	if err != nil {
-		return nil, fmt.Errorf("error: %w\n, given file path: %q", ErrOpeningFile, filePath)
-	}
-
-	defer readFile.Close()
-
-	fileScanner := bufio.NewScanner(readFile)
-	fileScanner.Split(bufio.ScanLines)
-	var fileLines []string
-
-	for fileScanner.Scan() {
-		fileLines = append(fileLines, fileScanner.Text())
-	}
-
-	parsedData, err := parseLines(fileLines)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return parsedData, nil
+	return p.LoadFromString(string(fileData))
 }
 
 // LoadFromString takes in a string data, parses it
@@ -105,38 +73,38 @@ func (p *Parser) LoadFromString(data string) error {
 }
 
 // Get retrieves the value of a key in a section.
-func (p *Parser) Get(section_name, key string) (string, error) {
-	property, sectionExists := p.parsedData[section_name]
+func (p *Parser) Get(sectionName, key string) (string, error) {
+	property, sectionExists := p.parsedData[sectionName]
 
 	if !sectionExists {
-		return "", fmt.Errorf("error: %w\n section: %q does not exist", ErrSectionNotFound, section_name)
+		return "", fmt.Errorf("%w section %q does not exist", ErrSectionNotFound, sectionName)
 	}
 
 	val, keyExists := property[key]
 	if !keyExists {
-		return "", fmt.Errorf("error: %w\n key: %q does not exist in section: %q", ErrKeyNotFound, key, section_name)
+		return "", fmt.Errorf("%w key %q does not exist in section %q", ErrKeyNotFound, key, sectionName)
 	}
 
 	return val, nil
 }
 
 // Set sets the value of a key in a section.
-func (p *Parser) Set(section_name, key, value string) error {
-	if section_name == "" {
+func (p *Parser) Set(sectionName, key, value string) error {
+	if sectionName == "" {
 		return ErrSectionIsEmpty
 	}
 
 	if key == "" {
-		return fmt.Errorf("error: %w\n given section: %q", ErrKeyIsEmpty, section_name)
+		return fmt.Errorf("%w given section %q", ErrKeyIsEmpty, sectionName)
 	}
 
-	_, sectionExists := p.parsedData[section_name]
+	_, sectionExists := p.parsedData[sectionName]
 
 	if !sectionExists {
-		p.parsedData[section_name] = make(map[string]string)
+		p.parsedData[sectionName] = make(map[string]string)
 	}
 
-	p.parsedData[section_name][key] = value
+	p.parsedData[sectionName][key] = value
 
 	return nil
 }
@@ -166,11 +134,13 @@ func (p *Parser) String() string {
 
 	var str string
 	for section, properties := range p.parsedData {
-		str += "\n[" + section + "]\n"
+		str += "[" + section + "]\n"
 		for key, value := range properties {
 			str += key + "=" + value + "\n"
 		}
 	}
+
+	str = strings.TrimSuffix(str, "\n")
 
 	return str
 }
@@ -188,70 +158,74 @@ func (p *Parser) SaveToFile(filePath string) error {
 
 	defer file.Close()
 
-	for section, properties := range p.parsedData {
-		_, err := file.WriteString("\n[" + section + "]\n")
-		if err != nil {
-			return fmt.Errorf("error: %w\n, given file path: %q", ErrWritingToFile, filePath)
-		}
-		for key, value := range properties {
-			_, err := file.WriteString(key + "=" + value + "\n")
+	_, err = file.WriteString(p.String())
 
-			if err != nil {
-				return fmt.Errorf("error: %w\n, given file path: %q", ErrWritingToFile, filePath)
-			}
-		}
+	if err != nil {
+		return ErrWritingToFile
 	}
-
 	return nil
 }
 
 func parseLines(lines []string) (map[string]map[string]string, error) {
 	parsedData := make(map[string]map[string]string)
-
 	re := regexp.MustCompile(`\[.*?\]`)
 
 	inSection := false
+	var sectionName string
 
 	for i := 0; i < len(lines); i++ {
-
 		if !inSection && (strings.HasPrefix(lines[i], ";") || strings.HasPrefix(lines[i], "#")) {
 			continue
 		}
 
-		sectionName := re.FindString(lines[i])
+		sectionNameMatch := re.FindString(lines[i])
 
-		if sectionName != "" {
+		if len(sectionNameMatch) == 2 {
+			return nil, ErrSectionIsEmpty
+		}
+
+		if sectionNameMatch != "" {
+			sectionName = sectionNameMatch[1 : len(sectionNameMatch)-1]
+			parsedData[sectionName] = make(map[string]string)
 			inSection = true
-			sectionName = sectionName[1 : len(sectionName)-1]
+			continue
+		}
 
-			if sectionName == "" {
-				return nil, ErrSectionIsEmpty
-			}
-
-			i++
+		if inSection {
 			for i < len(lines) && lines[i] == "" {
 				i++
+			}
+
+			if i >= len(lines) {
+				break
 			}
 
 			if strings.HasPrefix(lines[i], ";") || strings.HasPrefix(lines[i], "#") {
 				return nil, ErrCommentOnNewLine
 			}
 
-			parsedData[sectionName] = make(map[string]string)
-			for ; i < len(lines) && lines[i] != ""; i++ {
+			for ; i < len(lines); i++ {
+				if lines[i] == "" || re.MatchString(lines[i]) {
+					inSection = false
+					i--
+					break
+				}
+
 				keyValuePair := strings.Split(lines[i], "=")
-				if keyValuePair[0] == "" {
-					return nil, fmt.Errorf("error: %w\n key for section: %q is empty", ErrKeyIsEmpty, sectionName)
+				if len(keyValuePair) != 2 {
+					return nil, fmt.Errorf("invalid key-value pair %q", lines[i])
 				}
-				if keyValuePair[1] == "" {
-					return nil, fmt.Errorf("error: %w\n value of key: %q is empty", ErrValueIsEmpty, keyValuePair[0])
+
+				key := strings.TrimSpace(keyValuePair[0])
+				value := strings.TrimSpace(keyValuePair[1])
+				if key == "" {
+					return nil, fmt.Errorf("%w key for section %q is empty", ErrKeyIsEmpty, sectionName)
 				}
-				key := keyValuePair[0]
-				value := keyValuePair[1]
-				parsedData[sectionName][strings.TrimSpace(key)] = strings.TrimSpace(value)
+				if value == "" {
+					return nil, fmt.Errorf("%w value of key %q is empty", ErrValueIsEmpty, key)
+				}
+				parsedData[sectionName][key] = value
 			}
-		} else {
-			inSection = false
 		}
 	}
 

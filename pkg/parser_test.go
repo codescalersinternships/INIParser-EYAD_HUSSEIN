@@ -13,8 +13,7 @@ var validParsedContent = map[string]map[string]string{
 	"database": {"server": "192.0.2.62", "port": "143", "file": "payroll.dat"},
 }
 
-const validInput = `
-;owner section
+const validInput = `;owner section
 [owner]
 name=John Doe
 organization=Acme Widgets Inc.
@@ -23,52 +22,43 @@ organization=Acme Widgets Inc.
 [database]
 server=192.0.2.62
 port=143
-file=payroll.dat
-`
+file=payroll.dat`
 
-const invalidEmptySectionNameInput = `
-[owner]
+const invalidEmptySectionNameInput = `[owner]
 name=John Doe
 organization=Acme Widgets Inc.
 
 []
 server=192.0.2.62
 port=143
-file=payroll.dat
-`
+file=payroll.dat`
 
-const invalidEmptyKeyNameInput = `
-[owner]
+const invalidEmptyKeyNameInput = `[owner]
 name=John Doe
 =Acme Widgets Inc.
 
 [database]
 server=192.0.2.62
 port=143
-file=payroll.dat
-`
+file=payroll.dat`
 
-const invalidEmptyValueInput = `
-[owner]
+const invalidEmptyValueInput = `[owner]
 name=John Doe
 organization=Acme Widgets Inc.
 
 [database]
 server=
 port=143
-file=payroll.dat
-`
+file=payroll.dat`
 
-const inValidCommentOnNewLineInput = `
-[owner]
+const inValidCommentOnNewLineInput = `[owner]
 name=John Doe
 organization=Acme Widgets Inc.
 
 [database]
 #server=192.0.2.62
 port=143
-file=payroll.dat
-`
+file=payroll.dat`
 
 func TestParser_LoadFromFile(t *testing.T) {
 	parser := NewParser()
@@ -82,7 +72,7 @@ func TestParser_LoadFromFile(t *testing.T) {
 			t.Errorf(err.Error())
 		}
 
-		assertTwoMaps(t, parser.parsedData, validParsedContent)
+		assertEqualMaps(t, parser.parsedData, validParsedContent)
 	})
 
 	var loadInvalidLoadTests = []struct {
@@ -145,7 +135,7 @@ func TestParser_LoadFromString(t *testing.T) {
 			err := parser.LoadFromString(tt.input)
 
 			if err == nil {
-				assertTwoMaps(t, parser.parsedData, tt.want)
+				assertEqualMaps(t, parser.parsedData, tt.want)
 			}
 			assertError(t, err, tt.err)
 		})
@@ -168,7 +158,7 @@ func TestParser_GetSectionNames(t *testing.T) {
 	validSectionNames := []string{"owner", "database"}
 
 	if !(len(sectionNames) == len(validSectionNames) && (slices.Contains(sectionNames, "owner") && slices.Contains(sectionNames, "database"))) {
-		t.Errorf("got:\n%q\nwant:\n%q", sectionNames, validSectionNames)
+		t.Errorf("got %q want %q", sectionNames, validSectionNames)
 	}
 }
 
@@ -187,7 +177,7 @@ func TestParser_String(t *testing.T) {
 		str := parser.String()
 		_ = parser.LoadFromString(str)
 
-		assertTwoMaps(t, parser.parsedData, validParsedContent)
+		assertEqualMaps(t, parser.parsedData, validParsedContent)
 	})
 }
 
@@ -223,7 +213,9 @@ func TestParser_Get(t *testing.T) {
 				assertError(t, err, tt.err)
 			}
 
-			assertStrings(t, value, tt.want)
+			if value != tt.want {
+				t.Errorf("got %q want %q", value, tt.want)
+			}
 
 		})
 
@@ -266,7 +258,9 @@ func TestParser_Set(t *testing.T) {
 				assertError(t, err, tt.err)
 			}
 			value, _ := parser.Get(tt.section, tt.key)
-			assertStrings(t, value, tt.want)
+			if value != tt.want {
+				t.Errorf("got %q want %q", value, tt.want)
+			}
 		})
 	}
 }
@@ -288,7 +282,7 @@ func TestParser_GetSections(t *testing.T) {
 
 		sections, _ := parser.GetSections()
 
-		assertTwoMaps(t, sections, validParsedContent)
+		assertEqualMaps(t, sections, validParsedContent)
 	})
 
 	t.Run("return sections with empty data", func(t *testing.T) {
@@ -327,7 +321,7 @@ func TestParser_SaveToFile(t *testing.T) {
 			t.Error(err)
 		}
 
-		assertTwoMaps(t, parser.parsedData, validParsedContent)
+		assertEqualMaps(t, parser.parsedData, validParsedContent)
 	})
 
 	t.Run("save to file with empty data", func(t *testing.T) {
@@ -353,20 +347,13 @@ func ExampleParser_SaveToFile() {
 func assertError(t testing.TB, got, want error) {
 	t.Helper()
 	if !errors.Is(got, want) {
-		t.Errorf("got: %q, want: %q", got, want)
+		t.Errorf("got %q want %q", got, want)
 	}
 }
 
-func assertTwoMaps(t testing.TB, got, want map[string]map[string]string) {
+func assertEqualMaps(t testing.TB, got, want map[string]map[string]string) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got error:\n\t%q \nwant:\n\t%q", got, want)
-	}
-}
-
-func assertStrings(t testing.TB, got, want string) {
-	t.Helper()
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got:\n\t%q \nwant:\n\t%q", got, want)
+		t.Errorf("got %q want %q", got, want)
 	}
 }
