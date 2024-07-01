@@ -72,7 +72,7 @@ func TestParser_LoadFromFile(t *testing.T) {
 			t.Errorf(err.Error())
 		}
 
-		assertEqualMaps(t, parser.parsedData, validParsedContent)
+		assertAreEqual(t, parser.parsedData, validParsedContent)
 	})
 
 	var loadInvalidLoadTests = []struct {
@@ -135,7 +135,7 @@ func TestParser_LoadFromString(t *testing.T) {
 			err := parser.LoadFromString(tt.input)
 
 			if err == nil {
-				assertEqualMaps(t, parser.parsedData, tt.want)
+				assertAreEqual(t, parser.parsedData, tt.want)
 			}
 			assertError(t, err, tt.err)
 		})
@@ -177,7 +177,7 @@ func TestParser_String(t *testing.T) {
 		str := parser.String()
 		_ = parser.LoadFromString(str)
 
-		assertEqualMaps(t, parser.parsedData, validParsedContent)
+		assertAreEqual(t, parser.parsedData, validParsedContent)
 	})
 }
 
@@ -282,7 +282,7 @@ func TestParser_GetSections(t *testing.T) {
 
 		sections, _ := parser.GetSections()
 
-		assertEqualMaps(t, sections, validParsedContent)
+		assertAreEqual(t, sections, validParsedContent)
 	})
 
 	t.Run("return sections with empty data", func(t *testing.T) {
@@ -321,7 +321,7 @@ func TestParser_SaveToFile(t *testing.T) {
 			t.Error(err)
 		}
 
-		assertEqualMaps(t, parser.parsedData, validParsedContent)
+		assertAreEqual(t, parser.parsedData, validParsedContent)
 	})
 
 	t.Run("save to file with empty data", func(t *testing.T) {
@@ -351,7 +351,7 @@ func assertError(t testing.TB, got, want error) {
 	}
 }
 
-func assertEqualMaps(t testing.TB, got, want map[string]map[string]string) {
+func assertAreEqual(t testing.TB, got, want any) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %q want %q", got, want)
