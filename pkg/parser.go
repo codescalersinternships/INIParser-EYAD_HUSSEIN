@@ -18,16 +18,11 @@ type Parser struct {
 
 // NewParser returns a new Parser.
 func NewParser() *Parser {
-	return &Parser{}
+	return &Parser{parsedData: make(map[string]map[string]string)}
 }
 
 var (
-	ErrOpeningFile             = errors.New("error opening the file")                                 // failed to open file
-	ErrDataNotMatching         = errors.New("retrieved data is not matching test data")               // test data do not match retrieved data
-	ErrParsedDataNotMatching   = errors.New("parsed data is not matching test data")                  // test parsed config data do not match retrieved config data
-	ErrParsedStringNotMatching = errors.New("parsed string is not matching test string")              // test parsed config data do not match retrieved config data
-	ErrParsedDataMatching      = errors.New("expected error, but got parsed data matching test data") // test parsed config data matching retrieved config data when data is invalid
-
+	ErrOpeningFile      = errors.New("error opening the file")    // failed to open file
 	ErrKeyNotFound      = errors.New("key not found")             // input key not found in the section
 	ErrSectionNotFound  = errors.New("section not found")         // input section not found in the file
 	ErrSectionIsEmpty   = errors.New("section given is empty")    // input section is empty
@@ -121,12 +116,8 @@ func (p *Parser) GetSectionNames() []string {
 }
 
 // GetSections returns a map of sections and their keys and values.
-func (p *Parser) GetSections() (map[string]map[string]string, error) {
-
-	if len(p.parsedData) == 0 {
-		return nil, ErrParsedDataEmpty
-	}
-	return p.parsedData, nil
+func (p *Parser) GetSections() map[string]map[string]string {
+	return p.parsedData
 }
 
 // String returns a string representation of the parsed data.
@@ -147,18 +138,7 @@ func (p *Parser) String() string {
 
 // SaveToFile saves the parsed data to a file.
 func (p *Parser) SaveToFile(filePath string) error {
-	if len(p.parsedData) == 0 {
-		return ErrParsedDataEmpty
-	}
-
-	file, err := os.Create(filePath)
-	if err != nil {
-		return ErrOpeningFile
-	}
-
-	defer file.Close()
-
-	_, err = file.WriteString(p.String())
+	err := os.WriteFile(filePath, []byte(p.String()), 0644)
 
 	if err != nil {
 		return ErrWritingToFile

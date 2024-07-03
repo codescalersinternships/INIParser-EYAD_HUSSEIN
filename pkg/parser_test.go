@@ -275,29 +275,29 @@ func ExampleParser_Set() {
 }
 
 func TestParser_GetSections(t *testing.T) {
-	parser := NewParser()
 
 	t.Run("return sections with valid data", func(t *testing.T) {
+		parser := NewParser()
 		parser.parsedData = validParsedContent
 
-		sections, _ := parser.GetSections()
+		sections := parser.GetSections()
 
 		assertAreEqual(t, sections, validParsedContent)
 	})
 
 	t.Run("return sections with empty data", func(t *testing.T) {
-		parser.parsedData = make(map[string]map[string]string)
+		parser := NewParser()
 
-		_, err := parser.GetSections()
+		sections := parser.GetSections()
 
-		assertError(t, err, ErrParsedDataEmpty)
+		assertAreEqual(t, sections, make(map[string]map[string]string))
 	})
 }
 
 func ExampleParser_GetSections() {
 	parser := NewParser()
 	_ = parser.LoadFromFile("./testdata/valid_data.ini")
-	sections, _ := parser.GetSections()
+	sections := parser.GetSections()
 
 	fmt.Println(sections)
 }
@@ -323,18 +323,6 @@ func TestParser_SaveToFile(t *testing.T) {
 
 		assertAreEqual(t, parser.parsedData, validParsedContent)
 	})
-
-	t.Run("save to file with empty data", func(t *testing.T) {
-		parser.parsedData = make(map[string]map[string]string)
-		err := parser.SaveToFile(filePath)
-
-		if err != ErrParsedDataEmpty {
-			t.Error(err)
-		}
-
-		assertError(t, err, ErrParsedDataEmpty)
-	})
-
 }
 
 func ExampleParser_SaveToFile() {
