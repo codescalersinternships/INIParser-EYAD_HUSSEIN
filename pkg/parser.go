@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 )
 
@@ -148,64 +147,41 @@ func (p *Parser) SaveToFile(filePath string) error {
 
 func parseLines(lines []string) (map[string]map[string]string, error) {
 	parsedData := make(map[string]map[string]string)
-	re := regexp.MustCompile(`\[.*?\]`)
+	var currentSection string
 
-	inSection := false
-	var sectionName string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
 
-	for i := 0; i < len(lines); i++ {
-		if !inSection && (strings.HasPrefix(lines[i], ";") || strings.HasPrefix(lines[i], "#")) {
+		if line == "" {
 			continue
 		}
 
-		sectionNameMatch := re.FindString(lines[i])
-
-		if len(sectionNameMatch) == 2 {
-			return nil, ErrSectionIsEmpty
-		}
-
-		if sectionNameMatch != "" {
-			sectionName = sectionNameMatch[1 : len(sectionNameMatch)-1]
-			parsedData[sectionName] = make(map[string]string)
-			inSection = true
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			sectionName := strings.TrimSpace(line[1 : len(line)-1])
+			if sectionName == "" {
+				return nil, ErrSectionIsEmpty
+			}
+			currentSection = sectionName
+			if _, exists := parsedData[currentSection]; !exists {
+				parsedData[currentSection] = make(map[string]string)
+			}
 			continue
 		}
 
-		if inSection {
-			for i < len(lines) && lines[i] == "" {
-				i++
-			}
-
-			if i >= len(lines) {
-				break
-			}
-
-			if strings.HasPrefix(lines[i], ";") || strings.HasPrefix(lines[i], "#") {
+		if strings.Contains(line, "=") {
+			if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
 				return nil, ErrCommentOnNewLine
 			}
-
-			for ; i < len(lines); i++ {
-				if lines[i] == "" || re.MatchString(lines[i]) {
-					inSection = false
-					i--
-					break
-				}
-
-				keyValuePair := strings.Split(lines[i], "=")
-				if len(keyValuePair) != 2 {
-					return nil, fmt.Errorf("invalid key-value pair %q", lines[i])
-				}
-
-				key := strings.TrimSpace(keyValuePair[0])
-				value := strings.TrimSpace(keyValuePair[1])
-				if key == "" {
-					return nil, fmt.Errorf("%w key for section %q is empty", ErrKeyIsEmpty, sectionName)
-				}
-				if value == "" {
-					return nil, fmt.Errorf("%w value of key %q is empty", ErrValueIsEmpty, key)
-				}
-				parsedData[sectionName][key] = value
+			keyValuePair := strings.Split(line, "=")
+			key := strings.TrimSpace(keyValuePair[0])
+			value := strings.TrimSpace(keyValuePair[1])
+			if key == "" {
+				return nil, ErrKeyIsEmpty
 			}
+			if value == "" {
+				return nil, ErrValueIsEmpty
+			}
+			parsedData[currentSection][key] = value
 		}
 	}
 
