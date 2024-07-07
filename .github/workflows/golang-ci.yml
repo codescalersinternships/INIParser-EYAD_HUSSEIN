@@ -18,7 +18,7 @@ jobs:
       - name: Check code formatting using gofmt
         uses: Jerome1337/gofmt-action@v1.0.5
 
-      - name: Run golangci-lint in datetimegin
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6.0.1
 
       - name: Test
